@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Tetris</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
@@ -11,8 +11,21 @@
     <div id="tetris">
         <canvas id="gameCanvas"></canvas>
         <div id="score">Punteggio: 0</div>
+
+        <!-- Controlli touch on-screen -->
+        <div id="controls">
+            <div id="controls-top">
+                <button id="btn-rotate">↻ Ruota</button>
+                <button id="btn-drop">⬇ Drop</button>
+            </div>
+            <div id="controls-bottom">
+                <button id="btn-left">◀</button>
+                <button id="btn-down">▼</button>
+                <button id="btn-right">▶</button>
+            </div>
+        </div>
     </div>
 
-    <script src="script.js"></script> <!-- Assicurati che il file JS sia correttamente collegato -->
+    <script src="script.js"></script>
 </body>
 </html>

@@ -1,28 +1,77 @@
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
 body {
     font-family: Arial, sans-serif;
     display: flex;
     justify-content: center;
-    align-items: center;
-    height: 100vh;
+    align-items: flex-start;
+    min-height: 100vh;
     background-color: #111;
     margin: 0;
+    padding: 10px 0;
 }
 
 #tetris {
     text-align: center;
     color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
 }
 
 #gameCanvas {
     border: 2px solid white;
+    background-color: black;
+    touch-action: none; /* Disabilita scroll su swipe */
 }
 
 #score {
-    margin-top: 10px;
-    font-size: 18px;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
-canvas {
-    border: 2px solid white;
-    background-color: black;  /* Colore di sfondo per verificare se il canvas è visibile */
+/* ── Controlli touch ─────────────────────────────────── */
+#controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    width: 100%;
+    max-width: 300px;
 }
+
+#controls-top,
+#controls-bottom {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+#controls button {
+    background: #222;
+    color: #fff;
+    border: 2px solid #444;
+    border-radius: 10px;
+    font-size: 20px;
+    padding: 14px 20px;
+    min-width: 70px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s, transform 0.1s;
+    active-scale: 0.95;
+}
+
+#controls button:active {
+    background: #00aaff;
+    border-color: #00aaff;
+    transform: scale(0.95);
+}
+
+#btn-rotate { min-width: 110px; }
+#btn-drop   { min-width: 110px; }
