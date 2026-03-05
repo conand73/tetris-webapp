@@ -1,4 +1,4 @@
-const cacheName = 'tetris-pwa-v3';
+const cacheName = 'tetris-pwa-v4';
 const filesToCache = [
     '/tetris-webapp/',
     '/tetris-webapp/index.html',
