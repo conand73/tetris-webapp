@@ -1,10 +1,7 @@
-const cacheName = 'tetris-pwa-v4';
+const cacheName = 'tetris-pwa-v5';
+
+// Cacha SOLO l'icona (non cambia mai)
 const filesToCache = [
-    '/tetris-webapp/',
-    '/tetris-webapp/index.html',
-    '/tetris-webapp/style.css',
-    '/tetris-webapp/script.js',
-    '/tetris-webapp/manifest.json',
     '/tetris-webapp/icon.png'
 ];
 
@@ -16,6 +13,18 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+
+    // Per HTML, CSS, JS: sempre rete (mai cache)
+    if (url.pathname.endsWith('.html') ||
+        url.pathname.endsWith('.css')  ||
+        url.pathname.endsWith('.js')   ||
+        url.pathname.endsWith('.json')) {
+        event.respondWith(fetch(event.request));
+        return;
+    }
+
+    // Per tutto il resto (icona, ecc): cache first
     event.respondWith(
         caches.match(event.request).then((response) => response || fetch(event.request))
     );
