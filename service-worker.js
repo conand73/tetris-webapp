@@ -1,43 +1,31 @@
-const cacheName = 'tetris-pwa-v1';
+const cacheName = 'tetris-pwa-v2';
 const filesToCache = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/script.js',
-    '/manifest.json',
-    '/icon.png'
+    '/tetris-webapp/',
+    '/tetris-webapp/index.html',
+    '/tetris-webapp/style.css',
+    '/tetris-webapp/script.js',
+    '/tetris-webapp/manifest.json',
+    '/tetris-webapp/icon.png'
 ];
 
-// Installa il service worker e cache le risorse
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(cacheName).then((cache) => {
-            return cache.addAll(filesToCache);
-        })
+        caches.open(cacheName).then((cache) => cache.addAll(filesToCache))
     );
+    self.skipWaiting();
 });
 
-// Recupera le risorse dalla cache
 self.addEventListener('fetch', (event) => {
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
-        })
+        caches.match(event.request).then((response) => response || fetch(event.request))
     );
 });
 
-// Attiva il service worker
 self.addEventListener('activate', (event) => {
-    const cacheWhitelist = [cacheName];
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (!cacheWhitelist.includes(cacheName)) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
+        caches.keys().then((keys) =>
+            Promise.all(keys.filter(k => k !== cacheName).map(k => caches.delete(k)))
+        )
     );
+    self.clients.claim();
 });
