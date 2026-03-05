@@ -4,11 +4,11 @@ const ctx = canvas.getContext("2d");
 const COLS = 10;
 const ROWS = 20;
 
-// Canvas size fits screen, leaving room for score + hint (~60px)
-const RESERVED = 60;
+// Riserva spazio solo per il punteggio (~30px + gap)
+const RESERVED = 40;
 const maxBlockH = Math.floor((window.innerHeight - RESERVED) / ROWS);
 const maxBlockW = Math.floor(window.innerWidth / COLS);
-const blockSize = Math.min(maxBlockH, maxBlockW, 30);
+const blockSize = Math.min(maxBlockH, maxBlockW);
 
 canvas.width  = COLS * blockSize;
 canvas.height = ROWS * blockSize;
@@ -147,14 +147,11 @@ canvas.addEventListener("touchend", (e) => {
     const dy = e.changedTouches[0].clientY - ty;
 
     if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
-        // Tap → ruota
         rotate();
     } else if (Math.abs(dx) > Math.abs(dy)) {
-        // Swipe orizzontale → muovi
         if (dx > 0 && isMoveValid(currentX + 1, currentY, currentTetromino)) currentX++;
         else if (dx < 0 && isMoveValid(currentX - 1, currentY, currentTetromino)) currentX--;
     } else if (dy > 0) {
-        // Swipe giù → hard drop
         hardDrop();
     }
     redraw();
