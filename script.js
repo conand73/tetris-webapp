@@ -4,12 +4,11 @@ const ctx = canvas.getContext("2d");
 const COLS = 10;
 const ROWS = 20;
 
-// ── Calcola blockSize in base allo spazio disponibile ──────
-// Riserva spazio per: score (~30px), controls (~140px), gap/padding (~50px)
-const RESERVED_HEIGHT = 220;
-const maxBlockH = Math.floor((window.innerHeight - RESERVED_HEIGHT) / ROWS);
+// Canvas size fits screen, leaving room for score + hint (~60px)
+const RESERVED = 60;
+const maxBlockH = Math.floor((window.innerHeight - RESERVED) / ROWS);
 const maxBlockW = Math.floor(window.innerWidth / COLS);
-const blockSize = Math.min(maxBlockH, maxBlockW, 30); // max 30px
+const blockSize = Math.min(maxBlockH, maxBlockW, 30);
 
 canvas.width  = COLS * blockSize;
 canvas.height = ROWS * blockSize;
@@ -122,7 +121,7 @@ function gameLoop(ts) {
 newTetromino();
 requestAnimationFrame(gameLoop);
 
-// ── Tastiera ──────────────────────────────────────────────
+// ── Tastiera (desktop) ────────────────────────────────────
 document.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft"  && isMoveValid(currentX - 1, currentY, currentTetromino)) currentX--;
     if (e.key === "ArrowRight" && isMoveValid(currentX + 1, currentY, currentTetromino)) currentX++;
@@ -132,22 +131,10 @@ document.addEventListener("keydown", (e) => {
     redraw();
 });
 
-// ── Pulsanti on-screen ────────────────────────────────────
-function btn(id, fn) {
-    const el = document.getElementById(id);
-    // touchstart per risposta immediata su mobile
-    el.addEventListener("touchstart", (e) => { e.preventDefault(); fn(); redraw(); }, { passive: false });
-    el.addEventListener("click", () => { fn(); redraw(); });
-}
-
-btn("btn-left",   () => { if (isMoveValid(currentX - 1, currentY, currentTetromino)) currentX--; });
-btn("btn-right",  () => { if (isMoveValid(currentX + 1, currentY, currentTetromino)) currentX++; });
-btn("btn-down",   () => { if (isMoveValid(currentX, currentY + 1, currentTetromino)) currentY++; });
-btn("btn-rotate", rotate);
-btn("btn-drop",   hardDrop);
-
-// ── Swipe sul canvas ──────────────────────────────────────
+// ── Swipe + tap (mobile) ──────────────────────────────────
 let tx = 0, ty = 0;
+const SWIPE_THRESHOLD = 25;
+
 canvas.addEventListener("touchstart", (e) => {
     e.preventDefault();
     tx = e.touches[0].clientX;
@@ -158,13 +145,16 @@ canvas.addEventListener("touchend", (e) => {
     e.preventDefault();
     const dx = e.changedTouches[0].clientX - tx;
     const dy = e.changedTouches[0].clientY - ty;
-    const THRESH = 25;
-    if (Math.abs(dx) < THRESH && Math.abs(dy) < THRESH) {
+
+    if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
+        // Tap → ruota
         rotate();
     } else if (Math.abs(dx) > Math.abs(dy)) {
+        // Swipe orizzontale → muovi
         if (dx > 0 && isMoveValid(currentX + 1, currentY, currentTetromino)) currentX++;
         else if (dx < 0 && isMoveValid(currentX - 1, currentY, currentTetromino)) currentX--;
     } else if (dy > 0) {
+        // Swipe giù → hard drop
         hardDrop();
     }
     redraw();
