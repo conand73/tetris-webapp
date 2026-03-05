@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sfondo nero -->
+  <rect width="512" height="512" fill="#000000"/>
+  
+  <!-- Blocco I cyan orizzontale -->
+  <rect x="100" y="150" width="160" height="40" fill="#00FFFF" stroke="#00AAFF" stroke-width="4"/>
+  
+  <!-- Blocco O giallo -->
+  <rect x="300" y="100" width="80" height="80" fill="#FFFF00" stroke="#CCCC00" stroke-width="4"/>
+  
+  <!-- Blocco T viola -->
+  <rect x="150" y="250" width="80" height="80" fill="#AA00FF" stroke="#8800CC" stroke-width="4"/>
+  <rect x="190" y="220" width="80" height="40" fill="#AA00FF" stroke="#8800CC" stroke-width="4"/>
+  
+  <!-- Blocco L arancione -->
+  <rect x="320" y="250" width="60" height="140" fill="#FF8800" stroke="#CC6600" stroke-width="4"/>
+  <rect x="320" y="250" width="100" height="60" fill="#FF8800" stroke="#CC6600" stroke-width="4"/>
+  
+  <!-- Effetto glow pixelato -->
+  <filter id="glow">
+    <feGaussianBlur stdDeviation="3" flood-color="#FFFFFF" result="coloredBlur"/>
+    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <rect x="100" y="150" width="160" height="40" fill="none" stroke="#00FFFF" stroke-width="8" filter="url(#glow)" opacity="0.6"/>
+</svg>

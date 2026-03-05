@@ -1,0 +1,28 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #111;
+    margin: 0;
+}
+
+#tetris {
+    text-align: center;
+    color: white;
+}
+
+#gameCanvas {
+    border: 2px solid white;
+}
+
+#score {
+    margin-top: 10px;
+    font-size: 18px;
+}
+
+canvas {
+    border: 2px solid white;
+    background-color: black;  /* Colore di sfondo per verificare se il canvas è visibile */
+}
