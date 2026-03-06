@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#111111">
     <title>Tetris</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <style>
+        /* Fallback inline per mobile: garantisce sfondo scuro prima del CSS esterno */
+        html, body { background: #111 !important; }
+    </style>
 </head>
-<body>
+<body bgcolor="#111111">
     <div id="tetris">
         <div id="topbar">
             <button id="musicBtn" onclick="toggleMusic()">
