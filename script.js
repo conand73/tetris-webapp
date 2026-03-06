@@ -24,22 +24,18 @@ const tetrominoes = [
 let currentTetromino, currentColor, currentX, currentY;
 
 // ═══════════════════════════════════════════════
-//  MUSIC — 4 canali stile Game Boy
+//  AUDIO — massima semplicità, zero automazioni
 // ═══════════════════════════════════════════════
-let AC = null, musicOn = false, loopTimer = null;
+let AC = null, musicStarted = false;
 
-// MIDI → Hz
 const hz = n => 440 * Math.pow(2, (n - 69) / 12);
 
-// Tempo: 160 BPM, unità = semibiscroma (1/16)
-const BPM = 160;
-const T16 = (60 / BPM) / 4;   // durata di una semibiscroma in secondi
+// BPM 160 → una semiminima = 0.375s → semicroma = 0.09375s
+const BPM  = 160;
+const T16  = (60 / BPM) / 4;
 
-// ── SEQUENZA MELODICA (Korobeiniki — Game Boy key of A minor) ──
-// Formato: [nota_MIDI, durata_in_16esimi]   0 = pausa
-
-// Canale 1 — Melodia principale (square 50%)
-const CH1 = [
+// Korobeiniki — [nota_MIDI, durata_16esimi]  (0 = silenzio)
+const LEAD = [
   [76,4],[71,2],[72,2],[74,4],[72,2],[71,2],
   [69,4],[69,2],[72,2],[76,4],[74,2],[72,2],
   [71,6],[72,2],[74,4],[76,4],
@@ -50,8 +46,7 @@ const CH1 = [
   [72,4],[69,4],[69,8],
 ];
 
-// Canale 2 — Armonia (square 25%, terze parallele sotto)
-const CH2 = [
+const HARM = [
   [72,4],[67,2],[69,2],[71,4],[69,2],[67,2],
   [64,4],[64,2],[69,2],[72,4],[71,2],[69,2],
   [67,6],[69,2],[71,4],[72,4],
@@ -62,143 +57,139 @@ const CH2 = [
   [69,4],[64,4],[64,8],
 ];
 
-// Canale 3 — Basso (triangle, 2 ottave sotto)
-const CH3 = [
+const BASS = [
   [52,8],[50,8],[48,8],[50,8],
-  [47,4],[47,4],[50,4],[52,4],
+  [47,8],[50,4],[52,4],
   [48,4],[45,4],[45,8],
   [50,8],[53,8],[52,8],[55,8],
-  [48,4],[48,4],[47,4],[52,4],
+  [48,8],[47,4],[52,4],
   [48,4],[45,4],[45,8],
 ];
 
-// Canale 4 — Percussioni (noise)
-// Pattern 16 step ripetuto: 1=kick, 2=snare, 3=hihat
-const DRUM = [1,3,3,3, 2,3,1,3, 1,3,3,3, 2,3,3,3];
+// Pattern percussioni: 1=kick 2=snare 3=hihat 0=niente
+const DRUM = [1,3,3,3, 2,3,3,3, 1,3,3,3, 2,3,3,3];
 
-// ── Funzione che pianta una singola nota (fire & forget) ──
-function note(freq, start, dur, type, vol, detune) {
-  const osc = AC.createOscillator();
-  const g   = AC.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  if (detune) osc.detune.value = detune;
-  g.gain.setValueAtTime(0.0001, start);
-  g.gain.linearRampToValueAtTime(vol,   start + 0.008);
-  g.gain.setValueAtTime(vol,            start + dur * 0.80);
-  g.gain.linearRampToValueAtTime(0.0001, start + dur * 0.95);
-  osc.connect(g);
-  g.connect(AC.destination);
-  osc.start(start);
-  osc.stop(start + dur + 0.01);
-}
-
-function kick(start) {
-  // corpo tonale
-  const o = AC.createOscillator(), g = AC.createGain();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(150, start);
-  o.frequency.exponentialRampToValueAtTime(40, start + 0.12);
-  g.gain.setValueAtTime(0.35, start);
-  g.gain.exponentialRampToValueAtTime(0.0001, start + 0.15);
-  o.connect(g); g.connect(AC.destination);
-  o.start(start); o.stop(start + 0.18);
-}
-
-function snare(start) {
-  // noise
-  const len = AC.sampleRate * 0.12;
-  const buf = AC.createBuffer(1, len, AC.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  const src = AC.createBufferSource(), g = AC.createGain();
-  src.buffer = buf;
-  g.gain.setValueAtTime(0.18, start);
-  g.gain.exponentialRampToValueAtTime(0.0001, start + 0.1);
-  src.connect(g); g.connect(AC.destination);
-  src.start(start); src.stop(start + 0.12);
-  // corpo
-  const o = AC.createOscillator(), og = AC.createGain();
-  o.type = 'triangle'; o.frequency.value = 200;
-  og.gain.setValueAtTime(0.08, start);
-  og.gain.exponentialRampToValueAtTime(0.0001, start + 0.06);
-  o.connect(og); og.connect(AC.destination);
-  o.start(start); o.stop(start + 0.07);
-}
-
-function hihat(start) {
-  const len = AC.sampleRate * 0.04;
-  const buf = AC.createBuffer(1, len, AC.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-  // filtro passa-alto per timbro metallico
-  const src = AC.createBufferSource();
-  const filt = AC.createBiquadFilter();
+// ── Nota singola — semplicissima, nessuna automazione ──────
+function playNote(freq, start, dur, type, vol) {
+  if (!freq || !AC) return;
+  const o = AC.createOscillator();
   const g = AC.createGain();
-  src.buffer = buf;
-  filt.type = 'highpass'; filt.frequency.value = 7000;
-  g.gain.setValueAtTime(0.06, start);
-  g.gain.exponentialRampToValueAtTime(0.0001, start + 0.03);
-  src.connect(filt); filt.connect(g); g.connect(AC.destination);
-  src.start(start); src.stop(start + 0.04);
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = vol;
+  o.connect(g);
+  g.connect(AC.destination);
+  o.start(start);
+  o.stop(start + dur * 0.88);
 }
 
-// ── Scheduler: pianifica tutti i canali assieme ──
-function scheduleLoop(startTime) {
-  let totalBeats = 0;
+// ── Noise buffer breve per percussioni ─────────────────────
+function noiseHit(start, dur, vol, hipass) {
+  if (!AC) return;
+  const len = Math.ceil(AC.sampleRate * dur);
+  const buf = AC.createBuffer(1, len, AC.sampleRate);
+  const d   = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1);
+  const src  = AC.createBufferSource();
+  const g    = AC.createGain();
+  src.buffer = buf;
+  g.gain.value = vol;
+  if (hipass) {
+    const f = AC.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = hipass;
+    src.connect(f); f.connect(g);
+  } else {
+    src.connect(g);
+  }
+  g.connect(AC.destination);
+  src.start(start);
+  src.stop(start + dur);
+}
 
-  // Calcola durata totale del loop (in 16esimi) dal canale più lungo
-  const total16 = CH1.reduce((s, [,d]) => s + d, 0);
-  const loopLen = total16 * T16;
+// ── Pianifica un intero loop ────────────────────────────────
+function scheduleLoop(t0) {
+  // durata totale del loop = durata di LEAD
+  const loopDur = LEAD.reduce((s, [,d]) => s + d, 0) * T16;
 
-  // CH1 — melodia
-  let t = startTime;
-  for (const [n, d] of CH1) {
-    if (n) note(hz(n), t, d * T16, 'square', 0.12);
+  // CH1 — melodia principale
+  let t = t0;
+  for (const [n, d] of LEAD) {
+    playNote(n ? hz(n) : 0, t, d * T16, 'square', 0.10);
     t += d * T16;
   }
 
-  // CH2 — armonia (parallelo, parte da startTime)
-  t = startTime;
-  for (const [n, d] of CH2) {
-    if (n) note(hz(n), t, d * T16, 'square', 0.07, 8);
+  // CH2 — armonia
+  t = t0;
+  for (const [n, d] of HARM) {
+    playNote(n ? hz(n) : 0, t, d * T16, 'square', 0.06);
     t += d * T16;
   }
 
-  // CH3 — basso (loop finché non copre tutta la durata)
-  t = startTime;
-  let ch3i = 0;
-  while (t < startTime + loopLen - 0.01) {
-    const [n, d] = CH3[ch3i % CH3.length];
-    const dur = d * T16;
-    if (n) note(hz(n), t, dur, 'triangle', 0.16);
-    t += dur;
-    ch3i++;
+  // CH3 — basso (loop fino a coprire loopDur)
+  t = t0;
+  let bi = 0;
+  while (t < t0 + loopDur - 0.01) {
+    const [n, d] = BASS[bi % BASS.length];
+    playNote(n ? hz(n) : 0, t, d * T16, 'triangle', 0.14);
+    t += d * T16;
+    bi++;
   }
 
-  // CH4 — percussioni (loop a 16-step finché non copre tutta la durata)
-  t = startTime;
+  // CH4 — percussioni
+  t = t0;
   let di = 0;
-  while (t < startTime + loopLen - 0.01) {
+  while (t < t0 + loopDur - 0.01) {
     const type = DRUM[di % DRUM.length];
-    if (type === 1) kick(t);
-    else if (type === 2) snare(t);
-    else if (type === 3) hihat(t);
+    if (type === 1) {
+      // kick: sine discendente
+      playNote(150, t, 0.12, 'sine', 0.30);
+      noiseHit(t, 0.05, 0.05, null);
+    } else if (type === 2) {
+      // snare: triangle + noise
+      playNote(200, t, 0.07, 'triangle', 0.07);
+      noiseHit(t, 0.10, 0.15, null);
+    } else if (type === 3) {
+      // hihat: noise filtrato
+      noiseHit(t, 0.03, 0.05, 6000);
+    }
     t += T16;
     di++;
   }
 
-  // Ripianifica il prossimo loop
-  const msUntilNext = (startTime + loopLen - AC.currentTime - 0.3) * 1000;
-  loopTimer = setTimeout(() => scheduleLoop(startTime + loopLen), Math.max(msUntilNext, 0));
+  // Riprogramma il prossimo loop
+  const delay = Math.max((t0 + loopDur - AC.currentTime - 0.4) * 1000, 0);
+  setTimeout(() => scheduleLoop(t0 + loopDur), delay);
 }
 
 function startMusic() {
-  if (musicOn) return;
-  musicOn = true;
+  if (musicStarted) return;
+  musicStarted = true;
+
   AC = new (window.AudioContext || window.webkitAudioContext)();
-  const go = () => scheduleLoop(AC.currentTime + 0.1);
-  AC.state === 'suspended' ? AC.resume().then(go) : go();
+
+  const go = () => {
+    // Test: suona subito un beep udibile per confermare che l'audio funziona
+    const o = AC.createOscillator();
+    const g = AC.createGain();
+    o.frequency.value = 440;
+    g.gain.value = 0.1;
+    o.connect(g); g.connect(AC.destination);
+    o.start(AC.currentTime);
+    o.stop(AC.currentTime + 0.1);
+    // Poi parte il tema
+    scheduleLoop(AC.currentTime + 0.15);
+  };
+
+  if (AC.state === 'suspended') {
+    AC.resume().then(go);
+  } else {
+    go();
+  }
+
+  // Aggiorna pulsante
+  const btn = document.getElementById('musicBtn');
+  if (btn) btn.textContent = '🔊 Musica ON';
 }
 
 // ═══════════════════════════════════════════════
@@ -239,7 +230,8 @@ function placeTetromino() {
 function removeFullLines() {
   for (let r=ROWS-1;r>=0;r--) {
     if (board[r].every(c=>c)) {
-      board.splice(r,1); board.unshift(Array(COLS).fill(0));
+      board.splice(r,1);
+      board.unshift(Array(COLS).fill(0));
       score+=100; r++;
     }
   }
@@ -273,7 +265,7 @@ function gameLoop(ts) {
     }
   }
   redraw();
-  document.getElementById("score").innerText=`Punteggio: ${score}`;
+  document.getElementById("score").innerText = `Punteggio: ${score}`;
   requestAnimationFrame(gameLoop);
 }
 
