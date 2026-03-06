@@ -71,21 +71,21 @@ const DRUM = [1,3,3,3, 2,3,3,3, 1,3,3,3, 2,3,3,3];
 
 // ── Nota singola — semplicissima, nessuna automazione ──────
 function playNote(freq, start, dur, type, vol) {
-  if (!freq || !AC) return;
+  if (!freq || !AC || !masterGain) return;
   const o = AC.createOscillator();
   const g = AC.createGain();
   o.type = type;
   o.frequency.value = freq;
   g.gain.value = vol;
   o.connect(g);
-  g.connect(AC.destination);
+  g.connect(masterGain);
   o.start(start);
   o.stop(start + dur * 0.88);
 }
 
 // ── Noise buffer breve per percussioni ─────────────────────
 function noiseHit(start, dur, vol, hipass) {
-  if (!AC) return;
+  if (!AC || !masterGain) return;
   const len = Math.ceil(AC.sampleRate * dur);
   const buf = AC.createBuffer(1, len, AC.sampleRate);
   const d   = buf.getChannelData(0);
@@ -102,7 +102,7 @@ function noiseHit(start, dur, vol, hipass) {
   } else {
     src.connect(g);
   }
-  g.connect(AC.destination);
+  g.connect(masterGain);
   src.start(start);
   src.stop(start + dur);
 }
@@ -162,34 +162,51 @@ function scheduleLoop(t0) {
   setTimeout(() => scheduleLoop(t0 + loopDur), delay);
 }
 
+let muted = false;  // starts unmuted (music plays when started)
+let masterGain = null;
+
+function updateIcon() {
+  const slash = document.getElementById('muteSlash');
+  if (!slash) return;
+  slash.setAttribute('visibility', muted ? 'visible' : 'hidden');
+}
+
+function toggleMusic() {
+  if (!musicStarted) {
+    // Prima volta: avvia
+    startMusic();
+  } else {
+    muted = !muted;
+    if (masterGain) masterGain.gain.value = muted ? 0 : 1;
+    updateIcon();
+  }
+}
+
 function startMusic() {
   if (musicStarted) return;
   musicStarted = true;
+  muted = false;
+  updateIcon();
 
   AC = new (window.AudioContext || window.webkitAudioContext)();
 
+  // Master gain per il mute
+  masterGain = AC.createGain();
+  masterGain.gain.value = 1;
+  masterGain.connect(AC.destination);
+
   const go = () => {
-    // Test: suona subito un beep udibile per confermare che l'audio funziona
     const o = AC.createOscillator();
     const g = AC.createGain();
     o.frequency.value = 440;
     g.gain.value = 0.1;
-    o.connect(g); g.connect(AC.destination);
+    o.connect(g); g.connect(masterGain);
     o.start(AC.currentTime);
     o.stop(AC.currentTime + 0.1);
-    // Poi parte il tema
     scheduleLoop(AC.currentTime + 0.15);
   };
 
-  if (AC.state === 'suspended') {
-    AC.resume().then(go);
-  } else {
-    go();
-  }
-
-  // Aggiorna pulsante
-  const btn = document.getElementById('musicBtn');
-  if (btn) btn.textContent = '🔊 Musica ON';
+  AC.state === 'suspended' ? AC.resume().then(go) : go();
 }
 
 // ═══════════════════════════════════════════════

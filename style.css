@@ -23,10 +23,36 @@ html, body {
     gap: 4px;
 }
 
+#topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0 4px;
+}
+
 #score {
     font-size: 18px;
     font-weight: bold;
+}
+
+#musicBtn {
+    background: none;
+    color: #fff;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.85;
     flex-shrink: 0;
+}
+
+#musicBtn:active {
+    opacity: 0.5;
 }
 
 #gameCanvas {

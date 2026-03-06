@@ -10,8 +10,17 @@
 <body>
     <div id="tetris">
         <div id="topbar">
+            <button id="musicBtn" onclick="toggleMusic()" title="Musica">
+                <svg id="musicIcon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Speaker -->
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path id="wave1" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                    <path id="wave2" d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                    <!-- Slash (visible only when muted) -->
+                    <line id="muteSlash" x1="2" y1="22" x2="22" y2="2" stroke="currentColor" stroke-width="2.5" visibility="hidden"/>
+                </svg>
+            </button>
             <div id="score">Punteggio: 0</div>
-            <button id="musicBtn" onclick="startMusic()">🔇 Avvia musica</button>
         </div>
         <canvas id="gameCanvas"></canvas>
     </div>
