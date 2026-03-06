@@ -29,156 +29,107 @@ const tetrominoes = [
 
 let currentTetromino, currentColor, currentX, currentY;
 
-// ── Tetris Theme (Korobeiniki) via Web Audio API ──────────
+// ── MUSIC ENGINE ──────────────────────────────────────────
 let audioCtx = null;
-let musicNodes = [];
-let musicStarted = false;
+let musicPlaying = false;
+let nextNoteTime = 0;
+let noteIndex = 0;
+let schedulerTimer = null;
 
-// Note frequencies (Hz)
-const NOTE = {
-  E4: 329.63, D4: 293.66, C4: 261.63, B3: 246.94,
-  A3: 220.00, G3: 196.00, F3: 174.61, E3: 164.81,
-  D3: 146.83, C3: 130.81, B2: 123.47, A2: 110.00,
-  G2:  98.00, F2:  87.31,
-  Bb3: 233.08, Eb4: 311.13, Ab3: 207.65,
-};
-
-// Korobeiniki melody: [frequency, duration_in_beats]
-// BPM ~160, 1 beat = 0.375s
-const BPM = 160;
+const BPM = 150;
 const BEAT = 60 / BPM;
+const LOOKAHEAD = 0.2;
+const SCHEDULE_INTERVAL = 50;
 
-const melody = [
-  [NOTE.E4, 1], [NOTE.B3, 0.5], [NOTE.C4, 0.5],
-  [NOTE.D4, 1], [NOTE.C4, 0.5], [NOTE.B3, 0.5],
-  [NOTE.A3, 1], [NOTE.A3, 0.5], [NOTE.C4, 0.5],
-  [NOTE.E4, 1], [NOTE.D4, 0.5], [NOTE.C4, 0.5],
-  [NOTE.B3, 1.5], [NOTE.C4, 0.5],
-  [NOTE.D4, 1], [NOTE.E4, 1],
-  [NOTE.C4, 1], [NOTE.A3, 1],
-  [NOTE.A3, 2],
+// Korobeiniki (Tetris Theme A) — [freq_melody, freq_bass, duration_in_beats]
+// 0 = rest/hold previous bass
+const SONG = [
+  [659.25, 164.81, 1],
+  [493.88, 123.47, 0.5],
+  [523.25, 130.81, 0.5],
+  [587.33, 146.83, 1],
+  [523.25, 130.81, 0.5],
+  [493.88, 123.47, 0.5],
+  [440.00, 110.00, 1],
+  [440.00, 110.00, 0.5],
+  [523.25, 130.81, 0.5],
+  [659.25, 164.81, 1],
+  [587.33, 146.83, 0.5],
+  [523.25, 130.81, 0.5],
+  [493.88, 123.47, 1.5],
+  [523.25, 130.81, 0.5],
+  [587.33, 146.83, 1],
+  [659.25, 164.81, 1],
+  [523.25, 130.81, 1],
+  [440.00, 110.00, 1],
+  [440.00, 110.00, 2],
 
-  [NOTE.D4, 1], [NOTE.F4 || NOTE.E4*1.059, 0.5], [NOTE.A4 || NOTE.E4*1.498, 0.5],
-  // Approximate A4 = 440Hz, F4 = 349.23
-  [349.23, 0.5], [440.00, 0.5], // D4->F4->A4
-  [NOTE.G3*2||392, 1], [NOTE.E4, 0.5], [NOTE.G3*2||392, 0.5],
-  [NOTE.E4, 1], [NOTE.C4, 0.5], [NOTE.E4, 0.5],
-  [NOTE.D4, 1.5], [NOTE.C4, 0.5],
-  [NOTE.B3, 1], [NOTE.B3, 0.5], [NOTE.C4, 0.5],
-  [NOTE.D4, 1], [NOTE.E4, 1],
-  [NOTE.C4, 1], [NOTE.A3, 1],
-  [NOTE.A3, 2],
+  [587.33, 146.83, 1],
+  [698.46, 174.61, 0.5],
+  [880.00, 220.00, 0.5],
+  [783.99, 196.00, 1],
+  [698.46, 174.61, 0.5],
+  [659.25, 164.81, 0.5],
+  [523.25, 130.81, 1],
+  [659.25, 164.81, 0.5],
+  [587.33, 146.83, 0.5],
+  [523.25, 130.81, 1],
+  [493.88, 123.47, 0.5],
+  [440.00, 110.00, 0.5],
+  [493.88, 123.47, 1.5],
+  [523.25, 130.81, 0.5],
+  [587.33, 146.83, 1],
+  [659.25, 164.81, 1],
+  [523.25, 130.81, 1],
+  [440.00, 110.00, 1],
+  [440.00, 110.00, 2],
 ];
 
-// Rewrite melody more accurately
-const tetrisMelody = [
-  // Phrase 1
-  [329.63, 1], [246.94, 0.5], [261.63, 0.5],
-  [293.66, 1], [261.63, 0.5], [246.94, 0.5],
-  [220.00, 1], [220.00, 0.5], [261.63, 0.5],
-  [329.63, 1], [293.66, 0.5], [261.63, 0.5],
-  [246.94, 1.5],[261.63, 0.5],
-  [293.66, 1], [329.63, 1],
-  [261.63, 1], [220.00, 1],
-  [220.00, 2],
-  // Phrase 2
-  [293.66, 1], [349.23, 0.5], [440.00, 0.5],
-  [392.00, 1], [329.63, 0.5], [261.63, 0.5],
-  [329.63, 1], [293.66, 0.5], [261.63, 0.5],
-  [246.94, 1.5],[261.63, 0.5],
-  [293.66, 1], [329.63, 1],
-  [261.63, 1], [220.00, 1],
-  [220.00, 2],
-];
-
-// Bass line (simple accompaniment)
-const bassLine = [
-  [110.00, 1], [0, 0.5], [130.81, 0.5],
-  [146.83, 1], [0, 0.5], [130.81, 0.5],
-  [110.00, 1], [0, 0.5], [110.00, 0.5],
-  [164.81, 1], [0, 0.5], [130.81, 0.5],
-  [123.47, 1.5],[0, 0.5],
-  [146.83, 1], [164.81, 1],
-  [130.81, 1], [110.00, 1],
-  [110.00, 2],
-  // phrase 2 bass
-  [146.83, 1], [0, 0.5], [174.61, 0.5],
-  [196.00, 1], [0, 0.5], [164.81, 0.5],
-  [164.81, 1], [0, 0.5], [130.81, 0.5],
-  [123.47, 1.5],[0, 0.5],
-  [146.83, 1], [164.81, 1],
-  [130.81, 1], [110.00, 1],
-  [110.00, 2],
-];
-
-function playNote(actx, freq, startTime, duration, gainNode, type = 'square') {
-  if (freq === 0) return;
-  const osc = actx.createOscillator();
-  const env = actx.createGain();
+function scheduleNote(freq, startTime, duration, type, vol) {
+  if (!freq || freq === 0) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
   osc.type = type;
   osc.frequency.value = freq;
-  env.gain.setValueAtTime(0, startTime);
-  env.gain.linearRampToValueAtTime(1, startTime + 0.01);
-  env.gain.setValueAtTime(1, startTime + duration * BEAT - 0.05);
-  env.gain.linearRampToValueAtTime(0, startTime + duration * BEAT);
-  osc.connect(env);
-  env.connect(gainNode);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.linearRampToValueAtTime(vol, startTime + 0.015);
+  gain.gain.setValueAtTime(vol, startTime + duration - 0.04);
+  gain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
   osc.start(startTime);
-  osc.stop(startTime + duration * BEAT + 0.01);
-  return osc;
+  osc.stop(startTime + duration + 0.02);
 }
 
-function scheduleMelody(actx, notes, gainNode, type, startTime) {
-  let t = startTime;
-  for (const [freq, dur] of notes) {
-    playNote(actx, freq, t, dur, gainNode, type);
-    t += dur * BEAT;
+function scheduler() {
+  while (nextNoteTime < audioCtx.currentTime + LOOKAHEAD) {
+    const [mFreq, bFreq, beats] = SONG[noteIndex % SONG.length];
+    const dur = beats * BEAT;
+    scheduleNote(mFreq, nextNoteTime, dur * 0.92, 'square',   0.10);
+    scheduleNote(bFreq, nextNoteTime, dur * 0.80, 'triangle', 0.06);
+    nextNoteTime += dur;
+    noteIndex++;
   }
-  return t; // end time
+  schedulerTimer = setTimeout(scheduler, SCHEDULE_INTERVAL);
 }
 
 function startMusic() {
-  if (musicStarted) return;
-  musicStarted = true;
-
+  if (musicPlaying) return;
+  musicPlaying = true;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-  const masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.18;
-  masterGain.connect(audioCtx.destination);
-
-  const melodyGain = audioCtx.createGain();
-  melodyGain.gain.value = 0.7;
-  melodyGain.connect(masterGain);
-
-  const bassGain = audioCtx.createGain();
-  bassGain.gain.value = 0.4;
-  bassGain.connect(masterGain);
-
-  // Calculate total loop duration
-  const melodyDuration = tetrisMelody.reduce((s, [,d]) => s + d * BEAT, 0);
-  const bassDuration   = bassLine.reduce((s, [,d]) => s + d * BEAT, 0);
-  const loopLen = Math.max(melodyDuration, bassDuration);
-
-  let loopStart = audioCtx.currentTime;
-
-  function scheduleLoop() {
-    scheduleMelody(audioCtx, tetrisMelody, melodyGain, 'square', loopStart);
-    scheduleMelody(audioCtx, bassLine,     bassGain,   'triangle', loopStart);
-    loopStart += loopLen;
-    // Schedule next loop slightly before end
-    const timeoutMs = (loopStart - audioCtx.currentTime - 0.2) * 1000;
-    setTimeout(scheduleLoop, Math.max(timeoutMs, 0));
+  const kickoff = () => {
+    nextNoteTime = audioCtx.currentTime + 0.05;
+    noteIndex = 0;
+    scheduler();
+  };
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(kickoff);
+  } else {
+    kickoff();
   }
-
-  scheduleLoop();
 }
 
-function resumeAudio() {
-  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-}
-
-// ── Drawing ───────────────────────────────────────────────
+// ── DRAWING ───────────────────────────────────────────────
 function drawBlock(c, r, color) {
     ctx.fillStyle = color;
     ctx.fillRect(c * blockSize, r * blockSize, blockSize - 1, blockSize - 1);
@@ -270,10 +221,9 @@ function gameLoop(ts) {
 newTetromino();
 requestAnimationFrame(gameLoop);
 
-// ── Tastiera (desktop) ────────────────────────────────────
+// ── INPUT — musica parte al primo tocco/tasto ─────────────
 document.addEventListener("keydown", (e) => {
     startMusic();
-    resumeAudio();
     if (e.key === "ArrowLeft"  && isMoveValid(currentX - 1, currentY, currentTetromino)) currentX--;
     if (e.key === "ArrowRight" && isMoveValid(currentX + 1, currentY, currentTetromino)) currentX++;
     if (e.key === "ArrowDown"  && isMoveValid(currentX, currentY + 1, currentTetromino)) currentY++;
@@ -282,14 +232,12 @@ document.addEventListener("keydown", (e) => {
     redraw();
 });
 
-// ── Swipe + tap (mobile) ──────────────────────────────────
 let tx = 0, ty = 0;
 const SWIPE_THRESHOLD = 25;
 
 canvas.addEventListener("touchstart", (e) => {
     e.preventDefault();
     startMusic();
-    resumeAudio();
     tx = e.touches[0].clientX;
     ty = e.touches[0].clientY;
 }, { passive: false });
@@ -298,7 +246,6 @@ canvas.addEventListener("touchend", (e) => {
     e.preventDefault();
     const dx = e.changedTouches[0].clientX - tx;
     const dy = e.changedTouches[0].clientY - ty;
-
     if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
         rotate();
     } else if (Math.abs(dx) > Math.abs(dy)) {
